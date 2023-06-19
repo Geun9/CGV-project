@@ -69,31 +69,35 @@ const campList = async (
   }
 };
 
+const allCampingZoneQuery = `SELECT
+JSON_ARRAYAGG(
+   JSON_OBJECT(
+    "campId", c.id,
+     "campingZoneId", cz.id,
+     "zoneName", cz.zone_name,
+     "additionalPrice", zso.additional_price,
+     "maxPeople", zso.max_people,
+     "coordinates", 
+       JSON_OBJECT(
+         "x1", cz.x1,
+         "x2", cz.x2,
+         "x3", cz.x3,
+         "x4", cz.x4,
+         "y1", cz.y1,
+         "y2", cz.y2,
+         "y3", cz.y3,
+         "y4", cz.y4 
+       )
+      ) 
+    ) zoneInfo
+    FROM camps c
+    JOIN camping_zones cz ON c.id = cz.camp_id
+    JOIN zone_size_options zso ON zso.id = cz.zone_size_option_id`;
+
 const getAllZoneByCampId = async (campId) => {
   try {
     const [result] = await dataSource.query(
-      `SELECT
-      JSON_ARRAYAGG(
-         JSON_OBJECT(
-           "id", cz.id,
-           "zoneName", cz.zone_name,
-           "additionalPrice", zso.additional_price,
-           "maxPeople", zso.max_people,
-           "coordinates", 
-             JSON_OBJECT(
-               "x1", cz.x1,
-               "x2", cz.x2,
-               "x3", cz.x3,
-               "x4", cz.x4,
-               "y1", cz.y1,
-               "y2", cz.y2,
-               "y3", cz.y3,
-               "y4", cz.y4 
-             )
-            ) 
-          ) zoneInfo
-      FROM camping_zones cz
-      JOIN zone_size_options zso ON zso.id = cz.zone_size_option_id
+      `${allCampingZoneQuery}
       WHERE cz.camp_id = ?`,
       [campId]
     );
@@ -155,9 +159,10 @@ const getUnavailableCampingZone = async (campId, startDate, endDate) => {
 const getAvailableCampingZone = async (campId, unavailableZoneNames) => {
   try {
     const [availableZone] = await dataSource.query(
-      `${campingZoneQuery} 
-    WHERE c.id = ? 
-    AND NOT cz.zone_name IN (?)`,
+      `${allCampingZoneQuery}
+    WHERE c.id = ?
+    AND NOT cz.zone_name IN (?)
+  `,
       [campId, unavailableZoneNames]
     );
     return availableZone;
@@ -340,10 +345,11 @@ const uploadProfileImage = async (userId, imageURL) => {
       `UPDATE users
         set profile_image = ?
       WHERE id = ?
-      `, [imageURL, userId]
-    )
+      `,
+      [imageURL, userId]
+    );
 
-    if (result.affectedRows !== 1) throw new Error ('INVALID_MODIFICATION');
+    if (result.affectedRows !== 1) throw new Error('INVALID_MODIFICATION');
 
     const modifyResult = await queryRunner.query(
       `SELECT
@@ -351,8 +357,9 @@ const uploadProfileImage = async (userId, imageURL) => {
         profile_image
       FROM users
       WHERE id = ?
-      `, [userId]
-    )
+      `,
+      [userId]
+    );
 
     await queryRunner.commitTransaction();
 
@@ -376,5 +383,5 @@ module.exports = {
   getCampById,
   getRecommendedProducts,
   getAllCategiries,
-  uploadProfileImage
+  uploadProfileImage,
 };

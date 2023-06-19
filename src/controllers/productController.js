@@ -39,22 +39,28 @@ const getAvailableCampingZone = catchAsync(async (req, res) => {
   if (endDate < startDate)
     return res.status(400).json({ message: 'INVALID_DATA' });
 
-    const unavailableZone = await productService.getUnavailableCampingZone(
-      campId, startDate, endDate
-    );
+  const unavailableZone = await productService.getUnavailableCampingZone(
+    campId,
+    startDate,
+    endDate
+  );
 
-    let unavailableZoneNames = unavailableZone.campingZones.map(
+  let unavailableZoneNames;
+  if (unavailableZone.campingZones === null) unavailableZoneNames = '';
+  else {
+    unavailableZoneNames = unavailableZone.campingZones.map(
       (zoneNames) => zoneNames.zoneName
     );
+  }
 
-  const availableZone = await productService.getAvailableCampingZone( 
+  const availableZone = await productService.getAvailableCampingZone(
     campId,
     unavailableZoneNames
   );
 
   return res.status(200).json({
     unavailableZones: unavailableZone.campingZones,
-    availableZones: availableZone.campingZones,
+    availableZones: availableZone.zoneInfo,
   });
 });
 
@@ -77,13 +83,13 @@ const getAllCategiries = catchAsync(async (req, res) => {
   res.status(200).json({ data });
 });
 
-const uploadProfileImage = catchAsync(async(req, res) => {
+const uploadProfileImage = catchAsync(async (req, res) => {
   const userId = req.user;
   const profileImage = req.file;
   const result = await productService.uploadProfileImage(userId, profileImage);
 
-  return res.status(200).json({result})
-})
+  return res.status(200).json({ result });
+});
 
 module.exports = {
   getProductList,
@@ -92,5 +98,5 @@ module.exports = {
   getCampById,
   getRecommendedProducts,
   getAllCategiries,
-  uploadProfileImage
+  uploadProfileImage,
 };
